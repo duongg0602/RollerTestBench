@@ -288,31 +288,51 @@ int main(void)
   {
 	  UART1_Parse();
 	  if(UART1_GetReceivedData(&UART_RX_DATA)){
-		  TX_ID040.mode = UART_RX_DATA.payload[0];
-		  TX_ID040.motor_set_speed = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
-		  TX_ID040.motor_set_torque = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
-		  TX_ID040.motor_driver_power = UART_RX_DATA.payload[5];
-		  CAN_Send_ID040();
-		  TX_ID070.ABS_Control_state = UART_RX_DATA.payload[6];
-		  CAN_Send_ID070();
-		  TX_ID080.mode = UART_RX_DATA.payload[7];
-		  TX_ID080.generator_set_speed = UART_RX_DATA.payload[8] | UART_RX_DATA.payload[9] << 8;
-		  TX_ID080.generator_set_torque = UART_RX_DATA.payload[10] | UART_RX_DATA.payload[11] << 8;
-		  TX_ID080.generator_driver_power = UART_RX_DATA.payload[12];
-		  CAN_Send_ID080();
-		  TX_ID0c0.Motor_Torque_gain = UART_RX_DATA.payload[13] | UART_RX_DATA.payload[14] << 8;
-		  TX_ID0c0.Motor_Torque_offset = UART_RX_DATA.payload[15] | UART_RX_DATA.payload[16] << 8;
-		  CAN_Send_ID0c0();
-		  TX_ID100.Generator_Torque_gain = UART_RX_DATA.payload[17] | UART_RX_DATA.payload[18] << 8;
-		  TX_ID100.generator_Torque_offset = UART_RX_DATA.payload[19] | UART_RX_DATA.payload[20] << 8;
-		  CAN_Send_ID100();
-		  TX_ID200.Brake_Torque_gain = UART_RX_DATA.payload[21] | UART_RX_DATA.payload[22] << 8;
-		  TX_ID200.Brake_Torque_offset = UART_RX_DATA.payload[23] | UART_RX_DATA.payload[24] << 8;
-		  CAN_Send_ID200();
-		  TX_ID180.WheelPulsePerRevolution = UART_RX_DATA.payload[25] | UART_RX_DATA.payload[26] << 8;
-		  CAN_Send_ID180();
-		  TX_ID1C0.RollerPulsePerRevolution = UART_RX_DATA.payload[27] | UART_RX_DATA.payload[28] << 8;
-		  CAN_Send_ID1C0();
+		  switch(UART_RX_DATA.payload[0]){
+		  	  case 0x040:
+				  TX_ID040.mode = UART_RX_DATA.payload[1];
+				  TX_ID040.motor_set_speed = UART_RX_DATA.payload[2] | UART_RX_DATA.payload[3] << 8;
+				  TX_ID040.motor_set_torque = UART_RX_DATA.payload[4] | UART_RX_DATA.payload[5] << 8;
+				  TX_ID040.motor_driver_power = UART_RX_DATA.payload[6];
+				  CAN_Send_ID040();
+				  break;
+		  	  case 0x070:
+				  TX_ID070.ABS_Control_state = UART_RX_DATA.payload[1];
+				  CAN_Send_ID070();
+				  break;
+		  	  case 0x080:
+				  TX_ID080.mode = UART_RX_DATA.payload[1];
+				  TX_ID080.generator_set_speed = UART_RX_DATA.payload[2] | UART_RX_DATA.payload[3] << 8;
+				  TX_ID080.generator_set_torque = UART_RX_DATA.payload[4] | UART_RX_DATA.payload[5] << 8;
+				  TX_ID080.generator_driver_power = UART_RX_DATA.payload[6];
+				  CAN_Send_ID080();
+		  		  break;
+		  	  case 0x0c0:
+				  TX_ID0c0.Motor_Torque_gain = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
+				  TX_ID0c0.Motor_Torque_offset = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
+				  CAN_Send_ID0c0();
+		  		  break;
+		  	  case 0x100:
+				  TX_ID100.Generator_Torque_gain = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
+				  TX_ID100.generator_Torque_offset = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
+				  CAN_Send_ID100();
+		  		  break;
+		  	  case 0x200:
+				  TX_ID200.Brake_Torque_gain = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
+				  TX_ID200.Brake_Torque_offset = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
+				  CAN_Send_ID200();
+		  		  break;
+		  	  case 0x180:
+				  TX_ID180.WheelPulsePerRevolution = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
+				  CAN_Send_ID180();
+		  		  break;
+		  	  case 0x1c0:
+				  TX_ID1C0.RollerPulsePerRevolution = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
+				  CAN_Send_ID1C0();
+		  		  break;
+		  	  default:
+		  		  break;
+		  }
 	  }
 
     /* USER CODE END WHILE */
