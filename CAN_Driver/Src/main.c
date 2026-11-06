@@ -24,6 +24,8 @@
 /* USER CODE BEGIN Includes */
 #include "CAN.h"
 #include "uart_framework.h"
+#include "global.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +45,7 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan;
 
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
@@ -51,6 +54,9 @@ UART_HandleTypeDef huart1;
 
 CAN_RxHeaderTypeDef CAN_RX;
 CAN_TxHeaderTypeDef CAN_TX;
+
+CAN_SharedData RX_BUFFER;
+CAN_SharedData TX_BUFFER;
 
 GUI_Motor_Driver_Control_ID040 Message_ID040;
 GUI_Generator_Driver_Control_ID080 Message_ID080;
@@ -132,9 +138,18 @@ static void MX_GPIO_Init(void);
 static void MX_CAN_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	cnt++;
+
+	if(htim->Instance == TIM3){
+		cnt++;
+        CAN_Transmit();
+	}
+	if (htim->Instance == TIM2)
+	{
+	  UART1_Parse();
+	}
 //	if(cnt >= 100){
 //		TX_ID401.Motor_Driver_Control_Mode++;
 //		TX_ID401.Motor_Driver_Volt++;
@@ -163,79 +178,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 //		can_tx_state = 1;
 //		cnt = 0;
 //	}
-//	if(cnt >= 40){
-//		TX_ID403.Error_Code++;
-//		TX_ID403.Motor_Torque++;
-//		TX_ID403.Motor_Torque_Gain++;
-//		TX_ID403.Motor_Torque_Offset++;
-//		TX_ID404.Error_Code++;
-//		TX_ID404.Generator_Torque++;
-//		TX_ID404.Generator_Torque_Gain++;
-//		TX_ID404.Generator_Torque_Offset++;
-//		TX_ID405.Error_Code++;
-//		TX_ID405.Brake_Torque++;
-//		TX_ID405.Brake_Torque_Gain++;
-//		TX_ID405.Brake_Torque_Offset++;
-//		TX_ID406.Error_code++;
-//		TX_ID406.WheelSpeed++;
-//		TX_ID406.PulsePerRevolution++;
-//		TX_ID407.Error_code++;
-//		TX_ID407.RollerSpeed++;
-//		TX_ID407.PulsePerRevolution++;
-//		CAN_Send_ID403();
-//		CAN_Send_ID404();
-//		CAN_Send_ID405();
-//		CAN_Send_ID406();
-//		CAN_Send_ID407();
-//		cnt = 0;
-//	}
-	if(cnt >= 100){
-		CAN_UART_Data.Motor_Driver_Volt = Message_ID401.Motor_Driver_Volt;
-		CAN_UART_Data.Motor_Driver_Current = Message_ID401.Motor_Driver_Current;
-		CAN_UART_Data.Motor_Driver_Control_Signal_Volt = Message_ID401.Motor_Driver_Control_Signal_Volt;
-		CAN_UART_Data.Motor_Driver_Control_Mode = Message_ID401.Motor_Driver_Control_Mode;
-		CAN_UART_Data.Motor_volt = Message_ID411.Motor_volt;
-		CAN_UART_Data.Motor_Current = Message_ID411.Motor_Current;
-		CAN_UART_Data.Motor_Contactor = Message_ID411.Motor_Contactor;
-		CAN_UART_Data.Error_code_ID411 = Message_ID411.Error_code;
-		CAN_UART_Data.PriBrakePress = Message_ID421.PriBrakePress;
-		CAN_UART_Data.SecBrakePress = Message_ID421.SecBrakePress;
-		CAN_UART_Data.ABS_Control_state = Message_ID431.ABS_Control_state;
-		CAN_UART_Data.ABS_Decrease_valve = Message_ID431.ABS_Decrease_valve;
-		CAN_UART_Data.ABS_Increase_Valve = Message_ID431.ABS_Increase_Valve;
-		CAN_UART_Data.ABS_Pump_state = Message_ID431.ABS_Pump_state;
-		CAN_UART_Data.Generator_Driver_Volt = Message_ID402.Generator_Driver_Volt;
-		CAN_UART_Data.Generator_Driver_Current = Message_ID402.Generator_Driver_Current;
-		CAN_UART_Data.Generator_Driver_Control_Signal_Volt = Message_ID402.Generator_Driver_Control_Signal_Volt;
-		CAN_UART_Data.Generator_Driver_Control_Mode = Message_ID402.Generator_Driver_Control_Mode;
-		CAN_UART_Data.Generator_volt = Message_ID412.Generator_volt;
-		CAN_UART_Data.Generator_Current = Message_ID412.Generator_Current;
-		CAN_UART_Data.Generator_Contactor = Message_ID412.Generator_Contactor;
-		CAN_UART_Data.Error_code_ID412 = Message_ID412.Error_code;
-		CAN_UART_Data.Motor_Torque = Message_ID403.Motor_Torque;
-		CAN_UART_Data.Motor_Torque_Gain = Message_ID403.Motor_Torque_Gain;
-		CAN_UART_Data.Motor_Torque_Offset = Message_ID403.Motor_Torque_Offset;
-		CAN_UART_Data.Error_Code_ID403 = Message_ID403.Error_Code;
-		CAN_UART_Data.Generator_Torque = Message_ID404.Generator_Torque;
-		CAN_UART_Data.Generator_Torque_Gain = Message_ID404.Generator_Torque_Gain;
-		CAN_UART_Data.Generator_Torque_Offset = Message_ID404.Generator_Torque_Offset;
-		CAN_UART_Data.Error_Code_ID404 = Message_ID404.Error_Code;
-		CAN_UART_Data.Brake_Torque = Message_ID405.Brake_Torque;
-		CAN_UART_Data.Brake_Torque_Gain = Message_ID405.Brake_Torque_Gain;
-		CAN_UART_Data.Brake_Torque_Offset = Message_ID405.Brake_Torque_Offset;
-		CAN_UART_Data.Error_Code_ID405 = Message_ID405.Error_Code;
-		CAN_UART_Data.WheelSpeed = Message_ID406.WheelSpeed;
-		CAN_UART_Data.PulsePerRevolution_Wheel = Message_ID406.PulsePerRevolution;
-		CAN_UART_Data.Error_code_ID406 = Message_ID406.Error_code;
-		CAN_UART_Data.RollerSpeed = Message_ID407.RollerSpeed;
-		CAN_UART_Data.PulsePerRevolution_Roller = Message_ID407.PulsePerRevolution;
-		CAN_UART_Data.Error_code_ID407 = Message_ID407.Error_code;
-		uint8_t* data = (uint8_t*)&CAN_UART_Data;
-		if(UART1_SendExpectedData(data, sizeof(payload_t))){
-			UART1_Send();
-		}
-		cnt = 0;
-	}
 }
 
 /* USER CODE END PFP */
@@ -276,9 +218,12 @@ int main(void)
   MX_CAN_Init();
   MX_TIM3_Init();
   MX_USART1_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   CAN_Config(NULL, 0);
+  HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_1); //ex: use tim2 channel 1
   UART1_Init();
   /* USER CODE END 2 */
 
@@ -286,7 +231,177 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  UART1_Parse();
+//		if(cnt >= 40){
+//			TX_ID403.Error_Code++;
+//			TX_ID403.Motor_Torque++;
+//			TX_ID403.Motor_Torque_Gain++;
+//			TX_ID403.Motor_Torque_Offset++;
+//			CAN_Send(0x403, 8, (uint8_t*)(&TX_ID403));
+//			TX_ID404.Error_Code++;
+//			TX_ID404.Generator_Torque++;
+//			TX_ID404.Generator_Torque_Gain++;
+//			TX_ID404.Generator_Torque_Offset++;
+//			CAN_Send(0x404, 8, (uint8_t*)(&TX_ID404));
+//			TX_ID405.Error_Code++;
+//			TX_ID405.Brake_Torque++;
+//			TX_ID405.Brake_Torque_Gain++;
+//			TX_ID405.Brake_Torque_Offset++;
+//			CAN_Send(0x405, 8, (uint8_t*)(&TX_ID405));
+	//		TX_ID406.Error_code++;
+	//		TX_ID406.WheelSpeed++;
+	//		TX_ID406.PulsePerRevolution++;
+	//		TX_ID407.Error_code++;
+	//		TX_ID407.RollerSpeed++;
+	//		TX_ID407.PulsePerRevolution++;
+//			cnt = 0;
+//		}
+	  if(CAN_ReadRxMessage()){
+		  switch(RX_BUFFER.frame.ID){
+		  			case 0x040:
+		  				Message_ID040.mode = CAN_rx_data[0];
+		  				Message_ID040.motor_set_speed = CAN_rx_data[1] | CAN_rx_data[2] << 8;
+		  				Message_ID040.motor_set_torque = CAN_rx_data[3] | CAN_rx_data[4] << 8;
+		  				Message_ID040.motor_driver_power = CAN_rx_data[5];
+		  				break;
+		  			case 0x070:
+		  				Message_ID070.ABS_Control_state = CAN_rx_data[0];
+		  				break;
+		  			case 0x080:
+		  				Message_ID080.mode = CAN_rx_data[0];
+		  				Message_ID080.generator_set_speed = CAN_rx_data[1] | CAN_rx_data[2] << 8;
+		  				Message_ID080.generator_set_torque = CAN_rx_data[3] | CAN_rx_data[4] << 8;
+		  				Message_ID080.generator_driver_power = CAN_rx_data[5];
+		  				break;
+		  			case 0x0C0:
+		  				Message_ID0c0.Motor_Torque_gain = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID0c0.Motor_Torque_offset = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				break;
+		  			case 0x100:
+		  				Message_ID100.Generator_Torque_gain = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID100.generator_Torque_offset = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				break;
+		  			case 0x200:
+		  				Message_ID200.Brake_Torque_gain = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID200.Brake_Torque_offset = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				break;
+		  			case 0x180:
+		  				Message_ID180.WheelPulsePerRevolution = CAN_rx_data[0];
+		  				break;
+		  			case 0x1C0:
+		  				Message_ID1C0.RollerPulsePerRevolution = CAN_rx_data[0];
+		  				break;
+		  			case 0x401:
+		  				Message_ID401.Motor_Driver_Volt = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID401.Motor_Driver_Current = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID401.Motor_Driver_Control_Signal_Volt = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				Message_ID401.Motor_Driver_Control_Mode = CAN_rx_data[6];
+		  				break;
+		  			case 0x411:
+		  				Message_ID411.Motor_volt = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID411.Motor_Current = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID411.Motor_Contactor = CAN_rx_data[4];
+		  				Message_ID411.Error_code = CAN_rx_data[5] | CAN_rx_data[6] << 8;
+		  				break;
+		  			case 0x421:
+		  				Message_ID421.PriBrakePress = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID421.SecBrakePress = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				break;
+		  			case 0x431:
+		  				Message_ID431.ABS_Control_state = CAN_rx_data[0];
+		  				Message_ID431.ABS_Pump_state = CAN_rx_data[1];
+		  				Message_ID431.ABS_Increase_Valve = CAN_rx_data[2];
+		  				Message_ID431.ABS_Decrease_valve = CAN_rx_data[3];
+		  				break;
+		  			case 0x402:
+		  				Message_ID402.Generator_Driver_Volt = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID402.Generator_Driver_Current = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID402.Generator_Driver_Control_Signal_Volt = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				Message_ID402.Generator_Driver_Control_Mode = CAN_rx_data[6];
+		  				break;
+		  			case 0x412:
+		  				Message_ID412.Generator_volt = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID412.Generator_Current = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID412.Generator_Contactor = CAN_rx_data[4];
+		  				Message_ID412.Error_code = CAN_rx_data[5] | CAN_rx_data[6] << 8;
+		  				break;
+		  			case 0x403:
+		  				Message_ID403.Motor_Torque = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID403.Motor_Torque_Gain = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID403.Motor_Torque_Offset = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				Message_ID403.Error_Code = CAN_rx_data[6] | CAN_rx_data[7] << 8;
+		  				break;
+		  			case 0x404:
+		  				Message_ID404.Generator_Torque = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID404.Generator_Torque_Gain = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID404.Generator_Torque_Offset = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				Message_ID404.Error_Code = CAN_rx_data[6] | CAN_rx_data[7] << 8;
+		  				break;
+		  			case 0x405:
+		  				Message_ID405.Brake_Torque = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID405.Brake_Torque_Gain = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID405.Brake_Torque_Offset = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				Message_ID405.Error_Code = CAN_rx_data[6] | CAN_rx_data[7] << 8;
+		  				break;
+		  			case 0x406:
+		  				Message_ID406.WheelSpeed = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID406.PulsePerRevolution = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID406.Error_code = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				break;
+		  			case 0x407:
+		  				Message_ID407.RollerSpeed = CAN_rx_data[0] | CAN_rx_data[1] << 8;
+		  				Message_ID407.PulsePerRevolution = CAN_rx_data[2] | CAN_rx_data[3] << 8;
+		  				Message_ID407.Error_code = CAN_rx_data[4] | CAN_rx_data[5] << 8;
+		  				break;
+		  			default:
+		  				break;
+		  		}
+
+		  	if(cnt >= 100){
+		  		CAN_UART_Data.Motor_Driver_Volt = Message_ID401.Motor_Driver_Volt;
+		  		CAN_UART_Data.Motor_Driver_Current = Message_ID401.Motor_Driver_Current;
+		  		CAN_UART_Data.Motor_Driver_Control_Signal_Volt = Message_ID401.Motor_Driver_Control_Signal_Volt;
+		  		CAN_UART_Data.Motor_Driver_Control_Mode = Message_ID401.Motor_Driver_Control_Mode;
+		  		CAN_UART_Data.Motor_volt = Message_ID411.Motor_volt;
+		  		CAN_UART_Data.Motor_Current = Message_ID411.Motor_Current;
+		  		CAN_UART_Data.Motor_Contactor = Message_ID411.Motor_Contactor;
+		  		CAN_UART_Data.Error_code_ID411 = Message_ID411.Error_code;
+		  		CAN_UART_Data.PriBrakePress = Message_ID421.PriBrakePress;
+		  		CAN_UART_Data.SecBrakePress = Message_ID421.SecBrakePress;
+		  		CAN_UART_Data.ABS_Control_state = Message_ID431.ABS_Control_state;
+		  		CAN_UART_Data.ABS_Decrease_valve = Message_ID431.ABS_Decrease_valve;
+		  		CAN_UART_Data.ABS_Increase_Valve = Message_ID431.ABS_Increase_Valve;
+		  		CAN_UART_Data.ABS_Pump_state = Message_ID431.ABS_Pump_state;
+		  		CAN_UART_Data.Generator_Driver_Volt = Message_ID402.Generator_Driver_Volt;
+		  		CAN_UART_Data.Generator_Driver_Current = Message_ID402.Generator_Driver_Current;
+		  		CAN_UART_Data.Generator_Driver_Control_Signal_Volt = Message_ID402.Generator_Driver_Control_Signal_Volt;
+		  		CAN_UART_Data.Generator_Driver_Control_Mode = Message_ID402.Generator_Driver_Control_Mode;
+		  		CAN_UART_Data.Generator_volt = Message_ID412.Generator_volt;
+		  		CAN_UART_Data.Generator_Current = Message_ID412.Generator_Current;
+		  		CAN_UART_Data.Generator_Contactor = Message_ID412.Generator_Contactor;
+		  		CAN_UART_Data.Error_code_ID412 = Message_ID412.Error_code;
+		  		CAN_UART_Data.Motor_Torque = Message_ID403.Motor_Torque;
+		  		CAN_UART_Data.Motor_Torque_Gain = Message_ID403.Motor_Torque_Gain;
+		  		CAN_UART_Data.Motor_Torque_Offset = Message_ID403.Motor_Torque_Offset;
+		  		CAN_UART_Data.Error_Code_ID403 = Message_ID403.Error_Code;
+		  		CAN_UART_Data.Generator_Torque = Message_ID404.Generator_Torque;
+		  		CAN_UART_Data.Generator_Torque_Gain = Message_ID404.Generator_Torque_Gain;
+		  		CAN_UART_Data.Generator_Torque_Offset = Message_ID404.Generator_Torque_Offset;
+		  		CAN_UART_Data.Error_Code_ID404 = Message_ID404.Error_Code;
+		  		CAN_UART_Data.Brake_Torque = Message_ID405.Brake_Torque;
+		  		CAN_UART_Data.Brake_Torque_Gain = Message_ID405.Brake_Torque_Gain;
+		  		CAN_UART_Data.Brake_Torque_Offset = Message_ID405.Brake_Torque_Offset;
+		  		CAN_UART_Data.Error_Code_ID405 = Message_ID405.Error_Code;
+		  		CAN_UART_Data.WheelSpeed = Message_ID406.WheelSpeed;
+		  		CAN_UART_Data.PulsePerRevolution_Wheel = Message_ID406.PulsePerRevolution;
+		  		CAN_UART_Data.Error_code_ID406 = Message_ID406.Error_code;
+		  		CAN_UART_Data.RollerSpeed = Message_ID407.RollerSpeed;
+		  		CAN_UART_Data.PulsePerRevolution_Roller = Message_ID407.PulsePerRevolution;
+		  		CAN_UART_Data.Error_code_ID407 = Message_ID407.Error_code;
+		  		uint8_t* data = (uint8_t*)&CAN_UART_Data;
+		  		UART1_SendExpectedData(data, sizeof(payload_t));
+		  		cnt = 0;
+		  	}
+	  }
 	  if(UART1_GetReceivedData(&UART_RX_DATA)){
 		  switch(UART_RX_DATA.payload[0]){
 		  	  case 0x040:
@@ -294,41 +409,41 @@ int main(void)
 				  TX_ID040.motor_set_speed = UART_RX_DATA.payload[2] | UART_RX_DATA.payload[3] << 8;
 				  TX_ID040.motor_set_torque = UART_RX_DATA.payload[4] | UART_RX_DATA.payload[5] << 8;
 				  TX_ID040.motor_driver_power = UART_RX_DATA.payload[6];
-				  CAN_Send_ID040();
+				  CAN_Send(0x040, 6, (uint8_t*)&TX_ID040);
 				  break;
 		  	  case 0x070:
 				  TX_ID070.ABS_Control_state = UART_RX_DATA.payload[1];
-				  CAN_Send_ID070();
+				  CAN_Send(0x070, 1, (uint8_t*)&TX_ID070);
 				  break;
 		  	  case 0x080:
 				  TX_ID080.mode = UART_RX_DATA.payload[1];
 				  TX_ID080.generator_set_speed = UART_RX_DATA.payload[2] | UART_RX_DATA.payload[3] << 8;
 				  TX_ID080.generator_set_torque = UART_RX_DATA.payload[4] | UART_RX_DATA.payload[5] << 8;
 				  TX_ID080.generator_driver_power = UART_RX_DATA.payload[6];
-				  CAN_Send_ID080();
+				  CAN_Send(0x080, 6, (uint8_t*)&TX_ID080);
 		  		  break;
 		  	  case 0x0c0:
 				  TX_ID0c0.Motor_Torque_gain = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
 				  TX_ID0c0.Motor_Torque_offset = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
-				  CAN_Send_ID0c0();
+				  CAN_Send(0x0c0, 4, (uint8_t*)&TX_ID0c0);
 		  		  break;
-		  	  case 0x100:
+		  	  case 0x10:
 				  TX_ID100.Generator_Torque_gain = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
 				  TX_ID100.generator_Torque_offset = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
-				  CAN_Send_ID100();
+				  CAN_Send(0x100, 4, (uint8_t*)&TX_ID100);
 		  		  break;
-		  	  case 0x200:
+		  	  case 0x20:
 				  TX_ID200.Brake_Torque_gain = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
 				  TX_ID200.Brake_Torque_offset = UART_RX_DATA.payload[3] | UART_RX_DATA.payload[4] << 8;
-				  CAN_Send_ID200();
+				  CAN_Send(0x200, 4, (uint8_t*)&TX_ID200);
 		  		  break;
-		  	  case 0x180:
+		  	  case 0x18:
 				  TX_ID180.WheelPulsePerRevolution = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
-				  CAN_Send_ID180();
+				  CAN_Send(0x180, 2, (uint8_t*)&TX_ID180);
 		  		  break;
-		  	  case 0x1c0:
+		  	  case 0x1c:
 				  TX_ID1C0.RollerPulsePerRevolution = UART_RX_DATA.payload[1] | UART_RX_DATA.payload[2] << 8;
-				  CAN_Send_ID1C0();
+				  CAN_Send(0x1c0, 2, (uint8_t*)&TX_ID1C0);
 		  		  break;
 		  	  default:
 		  		  break;
@@ -417,6 +532,65 @@ static void MX_CAN_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 15;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 1999;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 199;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -435,7 +609,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 16;
+  htim3.Init.Prescaler = 15;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -520,7 +694,27 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//    if (htim->Instance == TIM2)
+//    {
+//        UART1_Parse();
+//    }
+//
+//    if (htim->Instance == TIM3)
+//    {
+//        CAN_Transmit();
+//    }
+//
+//}
+void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM2 &&
+        htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+    {
+        UART1_Send();
+    }
+}
 /* USER CODE END 4 */
 
 /**
