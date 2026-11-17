@@ -20,6 +20,16 @@ uint32_t TX_MailBox;
 uint16_t Rx_count = 0;
 uint16_t Tx_count = 0;
 
+volatile uint16_t Tx_error = 0;
+volatile uint32_t CAN_tx_ver = 0;
+
+/* CAS lock: 0 = unlocked, 1 = locked */
+static volatile uint32_t CAN_tx_lock = 0;
+static volatile uint8_t CAN_tx_inflight = 0;
+static volatile uint8_t CAN_tx_pending = 0;
+
+static uint32_t wd_ver = 0;
+static uint16_t wd_cnt = 0;
 
 void CAN_Config(uint32_t* ID, uint8_t count){
 	CAN_FilterTypeDef canfilter;
@@ -115,6 +125,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcanx){
 }
 
 uint8_t CAN_Send(uint32_t ID, uint8_t len, uint8_t* data){
+
 	uint32_t head = CAN_TX_BUFFER.head;
 	uint32_t tail = CAN_TX_BUFFER.tail;
 
@@ -122,6 +133,7 @@ uint8_t CAN_Send(uint32_t ID, uint8_t len, uint8_t* data){
 	if(head - tail >= CAN_TX_BUFFER_SIZE){
 		return 0;
 	}
+	slot->cnt++;
 	slot->frame.ID = ID;
 	slot->frame.DLC = len;
 	for(uint8_t i = 0; i < len; i++){
@@ -132,17 +144,33 @@ uint8_t CAN_Send(uint32_t ID, uint8_t len, uint8_t* data){
 	return 1;
 }
 
+static inline uint8_t tx_ver_cas(uint32_t expected, uint32_t desired)
+{
+    do
+    {
+        if (__LDREXW(&CAN_tx_ver) != expected)
+        {
+            __CLREX();
+            return 0;
+        }
+    } while (__STREXW(desired, &CAN_tx_ver) != 0);
 
-void CAN_Transmit(){
+    __DMB();
+    return 1;
+}
+
+static void CAN_TxOwnerSend(uint32_t v){
 
 	uint32_t head = CAN_TX_BUFFER.head;
 	uint32_t tail = CAN_TX_BUFFER.tail;
 
 	if(head == tail){
+		tx_ver_cas(v, v + 1);
 		return;
 	}
 
 	CAN_SharedData *slot = &CAN_TX_BUFFER.slot[tail % CAN_TX_BUFFER_SIZE];
+	CAN_TX_BUFFER.tail = tail + 1;
 
 	CAN_TX.StdId = slot->frame.ID;
 	CAN_TX.DLC = slot->frame.DLC;
@@ -156,14 +184,77 @@ void CAN_Transmit(){
 	}
 
 	if(HAL_CAN_AddTxMessage(&hcan, &CAN_TX, slot->frame.Data, &TX_MailBox) == HAL_OK){
-		CAN_TX_BUFFER.tail++;
+		(void)tx_ver_cas(v, v + 2);
 	}
+    else
+    {
+    	Tx_error++;
+        (void)tx_ver_cas(v, v + 1);
+    }
+}
+
+static void CAN_OnTxEvent(void)
+{
+    uint32_t v = CAN_tx_ver;
+
+    if ((v & 1) == 0)
+    {
+        return;
+    }
+    CAN_TxOwnerSend(v);
+}
+
+void CAN_Transmit(void)
+{
+    uint32_t v = CAN_tx_ver;
+
+    if ((v & 1) == 0)
+    {
+        wd_cnt = 0;
+        if (tx_ver_cas(v, v + 1U))
+        {
+            CAN_TxOwnerSend(v + 1U);
+        }
+        return;
+    }
+    if (v != wd_ver)
+    {
+        wd_ver = v;
+        wd_cnt = 0;
+    }
+    else if (++wd_cnt >= CAN_TX_TIMEOUT_TICKS)
+    {
+        wd_cnt = 0;
+
+        HAL_CAN_AbortTxRequest(&hcan, CAN_TX_MAILBOX0 | CAN_TX_MAILBOX1 | CAN_TX_MAILBOX2);
+        if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 3)
+        {
+            if (tx_ver_cas(v, v + 1U))
+            {
+                return;
+            }
+        }
+    }
 }
 
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcanx){
 	Tx_count++;
+	CAN_OnTxEvent();
 	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	CAN_Transmit();
 }
 
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan){
+	Tx_count++;
+	CAN_OnTxEvent();
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+}
 
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan){
+	Tx_count++;
+	CAN_OnTxEvent();
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+}
+
+void HAL_CAN_TxMailbox0AbortCallback(CAN_HandleTypeDef *hcanx) { (void)hcanx; Tx_error++; CAN_OnTxEvent(); }
+void HAL_CAN_TxMailbox1AbortCallback(CAN_HandleTypeDef *hcanx) { (void)hcanx; Tx_error++; CAN_OnTxEvent(); }
+void HAL_CAN_TxMailbox2AbortCallback(CAN_HandleTypeDef *hcanx) { (void)hcanx; Tx_error++; CAN_OnTxEvent(); }

@@ -12,7 +12,9 @@
 
 #define CAN_RX_BUFFER_SIZE 32
 #define CAN_TX_BUFFER_SIZE 32
+#define CAN_TX_TIMEOUT_TICKS 100
 
+extern volatile uint16_t Tx_error;
 typedef struct
 {
     uint32_t ID;
@@ -52,7 +54,7 @@ extern uint32_t RX_FIFO;
 extern uint32_t TX_MailBox;
 extern uint16_t Rx_count;
 extern uint16_t Tx_count;
-extern volatile uint8_t can_tx_state;
+extern volatile uint32_t CAN_tx_ver;
 
 void CAN_Config(uint32_t* ID, uint8_t count);
 uint8_t CAN_ReadRxMessage();
@@ -60,6 +62,7 @@ uint8_t CAN_Send(uint32_t ID, uint8_t len, uint8_t* data);
 void CAN_Transmit();
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan);
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan);
-
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan);
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan);
 
 #endif /* INC_CAN_H_ */
